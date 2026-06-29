@@ -36,6 +36,53 @@ echo "Service name        : $SERVICE_NAME"
 echo "Socket              : $SOCKET_NAME"
 echo
 
+# Check for existing Gunicorn services
+EXISTING_SERVICES=()
+
+for service in /etc/systemd/system/*.service; do
+    [ -e "$service" ] || continue
+
+    if sudo grep -q "gunicorn" "$service"; then
+        EXISTING_SERVICES+=("$(basename "$service")")
+    fi
+done
+
+if [ ${#EXISTING_SERVICES[@]} -gt 0 ]; then
+    echo "Existing Flask/Gunicorn deployment(s) found:"
+    echo
+
+    for svc in "${EXISTING_SERVICES[@]}"; do
+        echo "  - $svc"
+    done
+
+    echo
+    read -p "Remove existing deployment(s) before continuing? (y/n): " remove_old
+
+    if [[ "$remove_old" =~ ^[Yy]$ ]]; then
+        echo "--> Removing existing Gunicorn services..."
+
+        for svc in "${EXISTING_SERVICES[@]}"; do
+            svc_name="${svc%.service}"
+
+            sudo systemctl stop "$svc_name" 2>/dev/null || true
+            sudo systemctl disable "$svc_name" 2>/dev/null || true
+            sudo rm -f "/etc/systemd/system/$svc"
+
+            echo "Removed service: $svc"
+        done
+
+        sudo systemctl daemon-reload
+
+        echo "--> Removing existing Nginx site configs..."
+        sudo rm -f /etc/nginx/sites-enabled/*
+        sudo rm -f /etc/nginx/sites-available/*
+    else
+        echo "Deployment cancelled to avoid conflict."
+        exit 0
+    fi
+fi
+
+echo
 read -p "Continue with deployment? (y/n): " confirm
 
 if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
@@ -116,7 +163,6 @@ EOF
 # 7. Enable Nginx Site
 echo "--> Activating Nginx config..."
 
-sudo rm -f /etc/nginx/sites-enabled/default
 sudo ln -sf "/etc/nginx/sites-available/$NGINX_SITE_NAME" "/etc/nginx/sites-enabled/$NGINX_SITE_NAME"
 
 sudo nginx -t
