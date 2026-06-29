@@ -1,83 +1,130 @@
 #!/bin/bash
-
-# Exit immediately if any command fails
 set -e
 
 echo "================================================="
-echo " Starting Automated Flask Deployment from Repo"
+echo " Flask Deployment Script"
 echo "================================================="
 
-# 1. System Update & Dependencies Installation
+APP_DIR="$(pwd)"
+APP_NAME="$(basename "$APP_DIR")"
+USER_NAME="$(whoami)"
+SERVICE_NAME="${APP_NAME}.service"
+NGINX_SITE_NAME="$APP_NAME"
+SOCKET_NAME="${APP_NAME}.sock"
+
+# Detect Flask entry point
+if [ -f app.py ]; then
+    APP_MODULE="app:app"
+    ENTRY_FILE="app.py"
+elif [ -f main.py ]; then
+    APP_MODULE="main:app"
+    ENTRY_FILE="main.py"
+else
+    echo
+    echo "ERROR: Could not find app.py or main.py."
+    echo "Please run this script from the root folder of your Flask project."
+    exit 1
+fi
+
+echo
+echo "Project folder      : $APP_DIR"
+echo "Project name        : $APP_NAME"
+echo "Linux user          : $USER_NAME"
+echo "Entry file          : $ENTRY_FILE"
+echo "Gunicorn module     : $APP_MODULE"
+echo "Service name        : $SERVICE_NAME"
+echo "Socket              : $SOCKET_NAME"
+echo
+
+read -p "Continue with deployment? (y/n): " confirm
+
+if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+    echo "Deployment cancelled."
+    exit 0
+fi
+
+echo "================================================="
+echo " Starting Flask Deployment"
+echo "================================================="
+
+# 1. System Update & Dependencies
 echo "--> Updating system packages and installing dependencies..."
-sudo apt update && sudo apt upgrade -y
+sudo apt update
+sudo apt upgrade -y
 sudo apt install python3-pip python3-venv git nginx -y
 
-# 2. Virtual Environment & Package Installation
-echo "--> Setting up Python virtual environment and installing Flask..."
+# 2. Virtual Environment
+echo "--> Setting up Python virtual environment..."
 python3 -m venv venv
 source venv/bin/activate
+
 pip install --upgrade pip
-pip install flask gunicorn
+
+if [ -f requirements.txt ]; then
+    echo "--> Installing from requirements.txt..."
+    pip install -r requirements.txt
+else
+    pip install Flask gunicorn
+fi
+
 deactivate
 
-# 3. Permissions Configuration
-echo "--> Configuring user groups and directory permissions..."
-sudo usermod -aG ubuntu www-data
-sudo chmod 755 /home/ubuntu
-# Adjust permissions of the current repository directory we are standing in
-chmod 750 $(pwd)
+# 3. Permissions
+echo "--> Configuring permissions..."
+sudo chmod 755 "/home/$USER_NAME"
+chmod 750 "$APP_DIR"
 
-# 4. Create the ndp-app systemd Service File
+# 4. Systemd Service
 echo "--> Creating systemd service file..."
-sudo cat << 'EOF' | sudo tee /etc/systemd/system/ndp-app.service > /dev/null
+
+sudo tee "/etc/systemd/system/$SERVICE_NAME" > /dev/null << EOF
 [Unit]
-Description=Gunicorn instance to serve Flask Application (ndp-app)
+Description=Gunicorn instance to serve $APP_NAME
 After=network.target
 
 [Service]
-User=ubuntu
-WorkingDirectory=/home/ubuntu/ndp2026
-Environment="PATH=/home/ubuntu/ndp2026/venv/bin"
-ExecStart=/home/ubuntu/ndp2026/venv/bin/gunicorn --workers 3 --bind unix:flaskapp.sock -m 007 app:app
+User=$USER_NAME
+WorkingDirectory=$APP_DIR
+Environment="PATH=$APP_DIR/venv/bin"
+ExecStart=$APP_DIR/venv/bin/gunicorn --workers 3 --bind unix:$SOCKET_NAME -m 007 $APP_MODULE
 
 [Install]
 WantedBy=multi-user.target
 EOF
 
-# 5. Start and Enable the ndp-app service
-echo "--> Starting ndp-app backend service..."
+# 5. Start Service
+echo "--> Starting backend service..."
 sudo systemctl daemon-reload
-sudo systemctl start ndp-app
-sudo systemctl enable ndp-app
+sudo systemctl restart "$SERVICE_NAME"
+sudo systemctl enable "$SERVICE_NAME"
 
-# 6. Create Nginx Configuration File
-echo "--> Creating Nginx reverse proxy configuration..."
-sudo cat << 'EOF' | sudo tee /etc/nginx/sites-available/flaskapp > /dev/null
+# 6. Nginx Config
+echo "--> Creating Nginx reverse proxy config..."
+
+sudo tee "/etc/nginx/sites-available/$NGINX_SITE_NAME" > /dev/null << EOF
 server {
     listen 80 default_server;
     server_name _;
 
     location / {
         include proxy_params;
-        proxy_pass http://unix:/home/ubuntu/ndp2026/flaskapp.sock;
+        proxy_pass http://unix:$APP_DIR/$SOCKET_NAME;
     }
 }
 EOF
 
-# 7. Activate Nginx Configuration
-echo "--> Activating Nginx configuration and restarting web server..."
-if [ -f "/etc/nginx/sites-enabled/default" ]; then
-    sudo rm /etc/nginx/sites-enabled/default
-fi
+# 7. Enable Nginx Site
+echo "--> Activating Nginx config..."
 
-if [ ! -f "/etc/nginx/sites-enabled/flaskapp" ]; then
-    sudo ln -s /etc/nginx/sites-available/flaskapp /etc/nginx/sites-enabled/
-fi
+sudo rm -f /etc/nginx/sites-enabled/default
+sudo ln -sf "/etc/nginx/sites-available/$NGINX_SITE_NAME" "/etc/nginx/sites-enabled/$NGINX_SITE_NAME"
 
 sudo nginx -t
 sudo systemctl restart nginx
 
 echo "================================================="
 echo " Deployment Successful!"
+echo " App folder: $APP_DIR"
+echo " Service: $SERVICE_NAME"
 echo " Access your app at: http://YOUR_EC2_PUBLIC_IP"
 echo "================================================="

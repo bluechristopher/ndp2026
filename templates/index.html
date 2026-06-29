@@ -37,6 +37,10 @@
             </tr>
             {% endfor %}
         </table>
+
+        <form method="POST" action="/clear">
+            <button type="submit">Clear all messages</button>
+        </form>
         {% else %}
         <p>No wishes yet. Be the first to post!</p>
         {% endif %}

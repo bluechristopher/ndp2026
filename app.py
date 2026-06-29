@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, redirect
 import csv
 from datetime import datetime
 
@@ -30,6 +30,14 @@ def home():
         
         wishes.reverse()  # reverse list of wishes to show latest first
         return render_template("index.html", wishes=wishes)
+
+@app.route("/clear", methods=["POST"])
+def clear():
+    with open("wishes.csv", "w", newline="", encoding="utf-8") as file:
+        writer = csv.writer(file)
+        writer.writerow(["Timestamp", "Name", "Message"])
+
+    return redirect("/")
 
 
 if __name__ == "__main__":
