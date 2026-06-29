@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>National Day Wishes</title>
+        <link rel="stylesheet" href="/static/style.css">
+    </head>
+
+    <body>
+        <img src="/static/ndp_logo.jpg" alt="NDP 2026 Logo" width="500px">
+        <h1>Happy 61st Birthday Singapore!</h1>
+        
+        <form method="POST">
+            <label>Enter your name:</label><br>
+            <input type="text" name="name" required><br><br>
+
+            <label>Write a message for Singapore:</label><br>
+            <textarea name="message" rows="4" required></textarea><br>
+            <button type="submit">Send your wish!</button>
+        </form>
+
+        {% if wishes %}
+        <hr>
+        <h2>National Day Wishes</h2>
+
+        <table>
+            <tr>
+                <th>Timestamp</th>
+                <th>Name</th>
+                <th>Message</th>
+            </tr>
+
+            {% for wish in wishes %}
+            <tr>
+                <td> {{ wish[0] }}</td>
+                <td> {{ wish[1] }}</td>
+                <td> {{ wish[2] }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+        {% else %}
+        <p>No wishes yet. Be the first to post!</p>
+        {% endif %}
+    </body>
+</html>
