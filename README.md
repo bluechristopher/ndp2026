@@ -1,9 +1,43 @@
 # National Day 2026 Wish Page
 This Flask web app serves a simple National Day wish page where users can submit their wishes for Singapore’s 61st birthday.
 
-## Deployment Guide (AWS EC2)
+## Deployment Guide
+Deploying a Flask web application allows users to access it via the Internet. There are several ways to deploy a Flask application on AWS. Two approaches include:
 
-This repository includesan automation script (`setup.sh`) designed to deploy this Flask application seamlessly onto an Ubuntu EC2 instance within the AWS Academy Learner Lab environment.
+- Deploying using Elastic Beanstalk – AWS automatically provisions and manages the underlying infrastructure, allowing you to focus primarily on developing and deploying your application.
+- Deploying on an EC2 instance – You provision and manage your own virtual server, giving you complete control over the operating system and software configuration.
+
+
+## AWS Elastic Beanstalk
+Elastic Beanstalk is a Platform as a Service (PaaS) offered by AWS. It allows developers to deploy web applications without having to manually configure or manage the underlying servers.
+
+When you upload your Flask application, Elastic Beanstalk automatically provisions the required AWS resources, deploys your application, and manages the runtime environment.
+
+Although your application still runs on EC2 instances behind the scenes, Elastic Beanstalk takes care of the server setup and ongoing management for you.
+
+### Step 1: Create a `requirements.txt` file
+```
+Flask>=3.1.2
+gunicorn>=26.0.0
+```
+
+### Step 2: Select all the project files and compress them into a ZIP file. The project files should appear immediately inside the ZIP file.
+
+### Step 3: Open Elastic Beanstalk in AWS Console.
+
+### Step 4: Create an Environment.
+- Select an application name
+- Under Platform details, select Python. For the application code, choose to upload a Local file, where you will upload the zip file created.
+- Under 'Platform-specific options', WSGI path must be updated to `app:app`. This tells Gunicorn how to locate your Flask app. In this case, it will locate `app.py` and look for `app = Flask(__name__)`. If you are using `main.py` instead, then you should specify it as `main:app`.
+- When you are using the AWS Academy Learner Lab, you have to specify, under Service access, that the Service role is `LabRole`, and the EC2 instance profile is `LabInstanceProfile`. These roles already contain the permissions required for the lab exercises, so selecting them allows Elastic Beanstalk to deploy and manage your Flask application successfully.
+- Press 'Create' button at the bottom.
+
+### Step 5: A message will be shown: "Elastic Beanstalk is launching your environment. This will take a few minutes." You can see the process under 'Events'. After a while, you will see a URL appear under 'Domain' in 'Environment overview'. Click on that to view the deployed web app.
+
+
+## AWS EC2
+
+For your convenience, there is an automation script (`setup.sh`) included for your to deploy a Flask web app  onto an Ubuntu EC2 instance within the AWS Academy Learner Lab environment.
 
 ### Architectural Overview
 Instead of running a fragile development server, the deployment architecture is structured for production resiliency:
