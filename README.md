@@ -3,7 +3,7 @@ This Flask web app serves a simple National Day wish page where users can submit
 
 ## Deployment Guide (AWS EC2)
 
-This repository includes a production-grade automation script (`setup.sh`) designed to deploy this Flask application seamlessly onto an Ubuntu EC2 instance within the AWS Academy Learner Lab environment.
+This repository includesan automation script (`setup.sh`) designed to deploy this Flask application seamlessly onto an Ubuntu EC2 instance within the AWS Academy Learner Lab environment.
 
 ### Architectural Overview
 Instead of running a fragile development server, the deployment architecture is structured for production resiliency:
