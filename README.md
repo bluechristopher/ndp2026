@@ -43,7 +43,7 @@ Instead of running a fragile development server, the deployment architecture is 
 Once your browser terminal loads up, copy and paste the following three commands to pull your code and run the automated pipeline:
 
 ```bash
-git clone [https://github.com/bluechristopher/ndp2026.git](https://github.com/bluechristopher/ndp2026.git)
+git clone https://github.com/bluechristopher/ndp2026.git
 cd ndp2026
 chmod +x setup.sh
 ./setup.sh
